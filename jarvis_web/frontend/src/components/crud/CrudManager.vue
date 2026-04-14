@@ -114,10 +114,25 @@ function resetForm() {
   editingId.value = null
 }
 
+function normalizeDateTime(value) {
+  if (!value) return ''
+  return value.length === 16 ? `${value}:00` : value
+}
+
 function normalizePayload() {
   const payload = {}
   props.fields.forEach((field) => {
-    payload[field.key] = field.type === 'number' ? Number(form[field.key]) : form[field.key]
+    if (field.type === 'number') {
+      payload[field.key] = Number(form[field.key])
+      return
+    }
+
+    if (field.type === 'datetime-local') {
+      payload[field.key] = normalizeDateTime(form[field.key])
+      return
+    }
+
+    payload[field.key] = form[field.key]
   })
   return payload
 }
@@ -126,6 +141,12 @@ function formatValue(value, type) {
   if (value === null || value === undefined || value === '') return '-'
   if (type === 'date') return new Date(`${value}T00:00:00`).toLocaleDateString('pt-BR')
   if (type === 'datetime-local') return new Date(value).toLocaleString('pt-BR')
+  return value
+}
+
+function normalizeInputValue(value, type) {
+  if (value === null || value === undefined) return initialValue({ type })
+  if (type === 'datetime-local') return String(value).slice(0, 16)
   return value
 }
 
@@ -146,7 +167,7 @@ async function load() {
 function startEdit(item) {
   editingId.value = item.id
   props.fields.forEach((field) => {
-    form[field.key] = item[field.key] ?? initialValue(field)
+    form[field.key] = normalizeInputValue(item[field.key], field.type)
   })
 }
 
