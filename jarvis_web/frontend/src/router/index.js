@@ -1,41 +1,21 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import ChatView from '../views/ChatView.vue'
-import ModuleView from '../views/ModuleView.vue'
+import HomeView from '../views/HomeView.vue'
+import AssistantView from '../views/AssistantView.vue'
+import TasksView from '../views/TasksView.vue'
+import AppointmentsView from '../views/AppointmentsView.vue'
+import NotesView from '../views/NotesView.vue'
+import ExpensesView from '../views/ExpensesView.vue'
+import RemindersView from '../views/RemindersView.vue'
 import SettingsView from '../views/SettingsView.vue'
 
 const routes = [
-  { path: '/', redirect: '/chat' },
-  { path: '/chat', name: 'chat', component: ChatView },
-  {
-    path: '/tarefas',
-    name: 'tasks',
-    component: ModuleView,
-    props: { moduleKey: 'tasks', title: 'Tarefas' },
-  },
-  {
-    path: '/compromissos',
-    name: 'appointments',
-    component: ModuleView,
-    props: { moduleKey: 'appointments', title: 'Compromissos' },
-  },
-  {
-    path: '/notas',
-    name: 'notes',
-    component: ModuleView,
-    props: { moduleKey: 'notes', title: 'Notas' },
-  },
-  {
-    path: '/gastos',
-    name: 'expenses',
-    component: ModuleView,
-    props: { moduleKey: 'expenses', title: 'Gastos' },
-  },
-  {
-    path: '/lembretes',
-    name: 'reminders',
-    component: ModuleView,
-    props: { moduleKey: 'reminders', title: 'Lembretes' },
-  },
+  { path: '/', name: 'home', component: HomeView },
+  { path: '/assistente', name: 'assistant', component: AssistantView },
+  { path: '/tarefas', name: 'tasks', component: TasksView },
+  { path: '/compromissos', name: 'appointments', component: AppointmentsView },
+  { path: '/notas', name: 'notes', component: NotesView },
+  { path: '/gastos', name: 'expenses', component: ExpensesView },
+  { path: '/lembretes', name: 'reminders', component: RemindersView },
   { path: '/configuracoes', name: 'settings', component: SettingsView },
 ]
 

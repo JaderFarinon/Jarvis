@@ -16,11 +16,27 @@ export const moduleApi = {
   remove: (module, id) => api.delete(`/api/${module}/${id}`),
 }
 
+export const dashboardApi = {
+  tasks: () => moduleApi.list('tasks'),
+  appointments: () => moduleApi.list('appointments'),
+  expenses: () => moduleApi.list('expenses'),
+  reminders: () => moduleApi.list('reminders'),
+}
+
 export const chatApi = {
-  history: () => api.get('/api/chat/history'),
-  send: (message) => api.post('/api/chat', { message }),
+  listConversations: () => api.get('/api/conversations'),
+  createConversation: (title) => api.post('/api/conversations', { title }),
+  listMessages: (conversationId) => api.get('/api/messages', { params: { conversation_id: conversationId } }),
+  sendAssistantMessage: (message, conversationId = null) =>
+    api.post('/api/assistant/chat', {
+      message,
+      conversation_id: conversationId,
+    }),
 }
 
 export const settingsApi = {
   fetch: () => api.get('/api/settings'),
+  save: (payload) => api.post('/api/settings', payload),
 }
+
+export default api
