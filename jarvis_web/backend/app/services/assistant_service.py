@@ -11,6 +11,7 @@ from app.core.config import settings as app_settings
 from app.models import Appointment, Conversation, Expense, Message, Note, Reminder, Settings, Task
 from app.schemas import AssistantChatIn, AssistantChatOut, RecurringTaskCreate, TaskUpdate
 from app.services.openai_client import build_chat_completion
+from app.services.recurrence_normalizer import normalize_recurrence_input
 from app.services.task_recurrence_service import create_recurring_tasks_batch, delete_tasks_by_scope, update_tasks_by_scope
 
 SUPPORTED_INTENTS = {
@@ -304,6 +305,7 @@ def execute_detected_action(db: Session, result: dict[str, Any]) -> None:
         return
 
     if intent == "create_recurring_task":
+        normalized = normalize_recurrence_input(data)
         create_recurring_tasks_batch(
             db,
             RecurringTaskCreate(
@@ -311,10 +313,10 @@ def execute_detected_action(db: Session, result: dict[str, Any]) -> None:
                 description=data.get("description"),
                 priority=data.get("priority", "medium"),
                 status=data.get("status", "pending"),
-                start_date=data["start_date"],
-                end_date=data["end_date"],
-                recurrence_pattern=data["recurrence_pattern"],
-                recurrence_meta=data.get("recurrence_meta", {}),
+                start_date=normalized["start_date"],
+                end_date=normalized["end_date"],
+                recurrence_pattern=normalized["recurrence_pattern"],
+                recurrence_meta=normalized["recurrence_meta"],
                 original_prompt=data.get("original_prompt"),
             ),
         )

@@ -21,7 +21,7 @@ def _build_system_prompt() -> str:
         "Para create_recurring_task, sempre exigir end_date e usar recurrence_pattern em: daily, weekly, monthly, interval. "
         "Para weekly, enviar recurrence_meta.weekdays como lista (ex.: [\"monday\",\"wednesday\"]). "
         "Para monthly, enviar recurrence_meta.day_of_month (1..31). "
-        "Para interval, enviar recurrence_meta.every_days (>0). "
+        "Para interval, enviar recurrence_meta.every_n_days (>0). Aceito também every_days. "
         "Para update_recurring_task e delete_recurring_task, enviar scope com single, future ou all. "
         "Se o usuário pedir editar/excluir algo recorrente e o scope não estiver explícito, defina precisa_confirmacao=true e pergunte exatamente: "
         "só esta tarefa? esta e as futuras? ou todas? "
