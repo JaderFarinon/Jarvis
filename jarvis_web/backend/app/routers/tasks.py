@@ -1,10 +1,23 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import Task
-from app.schemas import RecurringTaskCreate, RecurringTaskCreateOut, TaskCreate, TaskOut, TaskUpdate
-from app.services.task_recurrence_service import create_recurring_tasks_batch
+from app.schemas import (
+    RecurrenceScope,
+    RecurringTaskCreate,
+    RecurringTaskCreateOut,
+    TaskBulkOperationOut,
+    TaskBulkUpdateOut,
+    TaskCreate,
+    TaskOut,
+    TaskUpdate,
+)
+from app.services.task_recurrence_service import (
+    create_recurring_tasks_batch,
+    delete_tasks_by_scope,
+    update_tasks_by_scope,
+)
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -30,6 +43,48 @@ def create_recurring_tasks(payload: RecurringTaskCreate, db: Session = Depends(g
         recurrence_group_id=recurrence_group_id,
         total_created=len(tasks),
         tasks=tasks,
+    )
+
+
+@router.put("/recurring/{recurrence_group_id}/{task_id}", response_model=TaskBulkUpdateOut)
+def update_recurring_group(
+    recurrence_group_id: str,
+    task_id: int,
+    payload: TaskUpdate,
+    scope: RecurrenceScope = Query(default="single"),
+    db: Session = Depends(get_db),
+):
+    reference_task = db.get(Task, task_id)
+    if not reference_task:
+        raise HTTPException(status_code=404, detail="Task não encontrada")
+
+    selection = update_tasks_by_scope(db, reference_task, recurrence_group_id, scope, payload)
+    return TaskBulkUpdateOut(
+        recurrence_group_id=selection.recurrence_group_id,
+        scope=selection.applied_scope,
+        affected_count=len(selection.tasks),
+        message="Tarefas atualizadas com sucesso",
+        tasks=selection.tasks,
+    )
+
+
+@router.delete("/recurring/{recurrence_group_id}/{task_id}", response_model=TaskBulkOperationOut)
+def delete_recurring_group(
+    recurrence_group_id: str,
+    task_id: int,
+    scope: RecurrenceScope = Query(default="single"),
+    db: Session = Depends(get_db),
+):
+    reference_task = db.get(Task, task_id)
+    if not reference_task:
+        raise HTTPException(status_code=404, detail="Task não encontrada")
+
+    selection = delete_tasks_by_scope(db, reference_task, recurrence_group_id, scope)
+    return TaskBulkOperationOut(
+        recurrence_group_id=selection.recurrence_group_id,
+        scope=selection.applied_scope,
+        affected_count=len(selection.tasks),
+        message="Tarefas removidas com sucesso",
     )
 
 

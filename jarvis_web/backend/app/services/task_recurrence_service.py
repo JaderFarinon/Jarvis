@@ -4,16 +4,18 @@ import calendar
 import json
 from dataclasses import dataclass
 from datetime import date, timedelta
+from typing import Literal
 from uuid import uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models import Task
-from app.schemas import RecurringTaskCreate
+from app.schemas import RecurringTaskCreate, TaskUpdate
 
 MAX_RECURRING_SPAN_DAYS = 366 * 4
 VALID_PATTERNS = {"daily", "weekly", "monthly", "interval"}
+RecurrenceScope = Literal["single", "future", "all"]
 WEEKDAY_NAME_TO_INT = {
     "monday": 0,
     "tuesday": 1,
@@ -29,6 +31,13 @@ WEEKDAY_NAME_TO_INT = {
 class RecurrenceValidationResult:
     pattern: str
     recurrence_meta: dict
+
+
+@dataclass
+class ScopeSelectionResult:
+    tasks: list[Task]
+    recurrence_group_id: str | None
+    applied_scope: RecurrenceScope
 
 
 def validate_recurrence_rules(payload: RecurringTaskCreate) -> RecurrenceValidationResult:
@@ -114,6 +123,86 @@ def create_recurring_tasks_batch(db: Session, payload: RecurringTaskCreate) -> t
         db.refresh(task)
 
     return recurrence_group_id, tasks
+
+
+def update_tasks_by_scope(
+    db: Session,
+    reference_task: Task,
+    recurrence_group_id: str,
+    scope: RecurrenceScope,
+    payload: TaskUpdate,
+) -> ScopeSelectionResult:
+    selection = _select_scope_tasks(db, reference_task, recurrence_group_id, scope)
+    changes = payload.model_dump(exclude_unset=True)
+
+    if not changes:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Nenhum campo para atualização foi enviado",
+        )
+
+    for task in selection.tasks:
+        for key, value in changes.items():
+            setattr(task, key, value)
+
+    db.commit()
+    for task in selection.tasks:
+        db.refresh(task)
+
+    return selection
+
+
+def delete_tasks_by_scope(
+    db: Session,
+    reference_task: Task,
+    recurrence_group_id: str,
+    scope: RecurrenceScope,
+) -> ScopeSelectionResult:
+    selection = _select_scope_tasks(db, reference_task, recurrence_group_id, scope)
+
+    for task in selection.tasks:
+        db.delete(task)
+
+    db.commit()
+    return selection
+
+
+def _select_scope_tasks(
+    db: Session,
+    reference_task: Task,
+    recurrence_group_id: str,
+    scope: RecurrenceScope,
+) -> ScopeSelectionResult:
+    if not reference_task.is_recurring or not reference_task.recurrence_group_id:
+        return ScopeSelectionResult(tasks=[reference_task], recurrence_group_id=None, applied_scope="single")
+
+    if reference_task.recurrence_group_id != recurrence_group_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="A tarefa informada não pertence ao recurrence_group_id solicitado",
+        )
+
+    query = db.query(Task).filter(Task.recurrence_group_id == recurrence_group_id)
+
+    if scope == "single":
+        tasks = query.filter(Task.id == reference_task.id).all()
+    elif scope == "future":
+        if reference_task.due_date is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="A tarefa de referência precisa ter due_date para usar scope=future",
+            )
+        tasks = query.filter(Task.due_date >= reference_task.due_date).order_by(Task.due_date.asc()).all()
+    else:
+        tasks = query.order_by(Task.due_date.asc()).all()
+
+    if not tasks:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Nenhuma tarefa encontrada para o escopo informado",
+        )
+
+    return ScopeSelectionResult(tasks=tasks, recurrence_group_id=recurrence_group_id, applied_scope=scope)
 
 
 def _validate_weekly_meta(meta: dict) -> None:

@@ -1,5 +1,5 @@
 from datetime import date, datetime, time
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -95,6 +95,21 @@ class RecurringTaskCreate(BaseModel):
 class RecurringTaskCreateOut(BaseModel):
     recurrence_group_id: str
     total_created: int
+    tasks: list[TaskOut]
+
+
+
+RecurrenceScope = Literal["single", "future", "all"]
+
+
+class TaskBulkOperationOut(BaseModel):
+    recurrence_group_id: Optional[str] = None
+    scope: RecurrenceScope
+    affected_count: int
+    message: str
+
+
+class TaskBulkUpdateOut(TaskBulkOperationOut):
     tasks: list[TaskOut]
 
 
